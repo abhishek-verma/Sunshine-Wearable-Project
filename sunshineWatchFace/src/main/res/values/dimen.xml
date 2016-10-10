@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="text_size">22sp</dimen>
+
+    <dimen name="clock_pos_shift">0dp</dimen>
+    <dimen name="weather_pos_shift_rect">40dp</dimen>
+    <!--TODO use round shift in round watch-->
+    <dimen name="weather_pos_shift_round">32dp</dimen>
+</resources>
