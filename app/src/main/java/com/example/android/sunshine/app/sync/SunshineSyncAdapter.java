@@ -24,7 +24,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.format.Time;
@@ -37,11 +36,7 @@ import com.example.android.sunshine.app.R;
 import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
-import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.wearable.DataApi;
-import com.google.android.gms.wearable.PutDataMapRequest;
-import com.google.android.gms.wearable.PutDataRequest;
-import com.google.android.gms.wearable.Wearable;
+import com.example.android.sunshine.app.wearable.WearableDataSyncService;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -85,8 +80,11 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     private static final int INDEX_SHORT_DESC = 3;
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
 
-    public SunshineSyncAdapter(Context context, boolean autoInitialize) {
+    SunshineSyncService mSunshineSyncService;
+
+    public SunshineSyncAdapter(Context context, boolean autoInitialize, SunshineSyncService sunshineSyncService) {
         super(context, autoInitialize);
+        mSunshineSyncService = sunshineSyncService;
     }
 
     /**
@@ -472,23 +470,32 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     }
 
     private void updateWatchFaceData() {
-        PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/testData");
-        putDataMapRequest.getDataMap().putString("test-string", "Test Message!");
+        Context context = getContext();
 
-        PutDataRequest putDataRequest = putDataMapRequest.asPutDataRequest();
+        String locationQuery = Utility.getPreferredLocation(context);
 
-        Wearable.DataApi.putDataItem(((SunshineSyncService) getContext()).mGoogleApiClient, putDataRequest)
-                .setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
-                    @Override
-                    public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
-                        if (dataItemResult.getStatus().isSuccess()) {
-                            // Success
-                        } else {
-                            // Boo
-                        }
-                    }
-                });
+        Uri weatherUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationQuery, System.currentTimeMillis());
 
+        // we'll query our contentProvider, as always
+        Cursor cursor = context.getContentResolver().query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
+
+        if (cursor.moveToFirst()) {
+            int weatherId = cursor.getInt(INDEX_WEATHER_ID);
+            double high = cursor.getDouble(INDEX_MAX_TEMP);
+            double low = cursor.getDouble(INDEX_MIN_TEMP);
+            String desc = cursor.getString(INDEX_SHORT_DESC);
+
+            int iconId = Utility.getIconResourceForWeatherCondition(weatherId);
+            Resources resources = context.getResources();
+
+            //send weather id, iconId, min, max, desc
+            WearableDataSyncService.syncData(getContext(),
+                    iconId,
+                    high,
+                    low,
+                    desc);
+        }
+        cursor.close();
     }
 
     private void updateMuzei() {

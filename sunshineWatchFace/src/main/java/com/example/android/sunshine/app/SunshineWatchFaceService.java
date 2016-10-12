@@ -1,33 +1,44 @@
-package com.example.sunshinewatchface;
+package com.example.android.sunshine.app;
 
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
-import android.util.Log;
 import android.view.SurfaceHolder;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.wearable.DataApi;
-import com.google.android.gms.wearable.DataEvent;
-import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.wearable.Asset;
+import com.google.android.gms.wearable.DataItem;
+import com.google.android.gms.wearable.DataItemBuffer;
 import com.google.android.gms.wearable.DataMap;
 import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.NodeApi;
+import com.google.android.gms.wearable.PutDataRequest;
+import com.google.android.gms.wearable.Wearable;
 
 public class SunshineWatchFaceService extends CanvasWatchFaceService {
 
-
+    public static final String PREF_DATA_CHANGED_KEY = "data-changed";
+    public static final String WEATHER_DATA_PATH = "/weather-data";
+    public static final String IMAGE_ASSET_KEY = "image-asset";
+    public static final String HIGH_TEMP_KEY = "temp-high";
+    public static final String LOW_TEMP_KEY = "temp-low";
+    public static final String DESC_KEY = "weather-desc";
+    private static final String LOG_TAG = SunshineWatchFaceService.class.getSimpleName();
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
     private static final Typeface BOLD_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD);
-    private static final String TAG = SunshineWatchFaceService.class.getSimpleName();
 
 
     @Override
@@ -35,8 +46,10 @@ public class SunshineWatchFaceService extends CanvasWatchFaceService {
         return new Engine();
     }
 
-    public class Engine extends CanvasWatchFaceService.Engine implements DataApi.DataListener,
-            GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+    public class Engine extends CanvasWatchFaceService.Engine
+            implements SharedPreferences.OnSharedPreferenceChangeListener,
+            GoogleApiClient.ConnectionCallbacks,
+            GoogleApiClient.OnConnectionFailedListener {
 
 
         int mBgColor;
@@ -51,9 +64,15 @@ public class SunshineWatchFaceService extends CanvasWatchFaceService {
         Paint mMaxTempPaint;
         Paint mMinTempPaint;
 
+        private GoogleApiClient mGoogleApiClient;
+
         @Override
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
+
+            Utility.logD(LOG_TAG, "Registering preference changed listener");
+            PreferenceManager.getDefaultSharedPreferences(SunshineWatchFaceService.this)
+                    .registerOnSharedPreferenceChangeListener(this);
 
             mBgColor = getColor(R.color.black_86p);
 
@@ -82,6 +101,15 @@ public class SunshineWatchFaceService extends CanvasWatchFaceService {
                             .BACKGROUND_VISIBILITY_INTERRUPTIVE)
                     .setShowSystemUiTime(false)
                     .build());
+
+
+            mGoogleApiClient = new GoogleApiClient.Builder(SunshineWatchFaceService.this)
+                    .addApi(Wearable.API)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .build();
+            mGoogleApiClient.connect();
+
 
         }
 
@@ -189,24 +217,85 @@ public class SunshineWatchFaceService extends CanvasWatchFaceService {
         }
 
         @Override
-        public void onConnected(@Nullable Bundle bundle) {
+        public void onDestroy() {
+            super.onDestroy();
+            PreferenceManager.getDefaultSharedPreferences(SunshineWatchFaceService.this)
+                    .unregisterOnSharedPreferenceChangeListener(this);
 
+            if (null != mGoogleApiClient && mGoogleApiClient.isConnected()) {
+                mGoogleApiClient.disconnect();
+            }
         }
 
         @Override
-        public void onDataChanged(DataEventBuffer dataEventBuffer) {
-            for (DataEvent dataEvent : dataEventBuffer) {
-                if (dataEvent.getType() == DataEvent.TYPE_CHANGED) {
-                    DataMap dataMap = DataMapItem.fromDataItem(dataEvent.getDataItem()).getDataMap();
-                    String path = dataEvent.getDataItem().getUri().getPath();
+        public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+            //TODO use
 
-                    if (path.equals("/testData")) {
-                        if (Log.isLoggable(TAG, Log.DEBUG)) {
-                            Log.d(TAG, "Test DataItem updated:" + dataMap.getString("test-string"));
-                        }
-                    }
+            Utility.logD(LOG_TAG, "onSharedPreferenceChangedListener: " + s);
+
+            if (s.equals(PREF_DATA_CHANGED_KEY) && sharedPreferences.getBoolean(PREF_DATA_CHANGED_KEY, false)) {
+
+                //Resetting PREF_DATA_CHANGED
+                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(SunshineWatchFaceService.this);
+                SharedPreferences.Editor prefsEditor = prefs.edit();
+                prefsEditor.putBoolean(SunshineWatchFaceService.PREF_DATA_CHANGED_KEY, false);
+                prefsEditor.apply();
+
+
+                if (mGoogleApiClient == null || !mGoogleApiClient.isConnected()) {
+                    Utility.logD(LOG_TAG, "onSharedPreferenceChangedListener: mGoogleApiClient is not connected.");
+                    return;
                 }
+
+
+                Utility.logD(LOG_TAG, "onSharedPreferenceChangedListener: mGoogleApiClient is connected.");
+
+                Wearable.NodeApi.getLocalNode(mGoogleApiClient).setResultCallback(new ResultCallback<NodeApi.GetLocalNodeResult>() {
+                    @Override
+                    public void onResult(NodeApi.GetLocalNodeResult getLocalNodeResult) {
+
+                        Utility.logD(LOG_TAG, "getLocalNode, ResultCallback, onResult called ");
+
+                        Uri uri = new Uri.Builder()
+                                .scheme(PutDataRequest.WEAR_URI_SCHEME)
+                                .path(WEATHER_DATA_PATH)
+                                .build();
+
+                        Wearable.DataApi.getDataItems(mGoogleApiClient, uri)
+                                .setResultCallback(new ResultCallback<DataItemBuffer>() {
+                                    @Override
+                                    public void onResult(@NonNull DataItemBuffer dataItems) {
+                                        for (DataItem dataItem : dataItems) {
+
+                                            Utility.logD(LOG_TAG, "Data item path: " + dataItem.getUri().getPath());
+
+                                            if (dataItem.getUri().getPath().equals(WEATHER_DATA_PATH)) {
+                                                DataMap dataMap = DataMapItem.fromDataItem(dataItem).getDataMap();
+
+                                                double high = dataMap.getDouble(HIGH_TEMP_KEY);
+                                                double low = dataMap.getDouble(LOW_TEMP_KEY);
+                                                String weatherDesc = dataMap.getString(DESC_KEY);
+                                                Asset iconAsset = dataMap.getAsset(IMAGE_ASSET_KEY);
+
+                                                Utility.logD(LOG_TAG, "Got data, desc: " + weatherDesc);
+
+                                            }
+                                        }
+
+                                        dataItems.release();
+                                    }
+                                });
+
+                    }
+                });
             }
+
+        }
+
+
+        @Override
+        public void onConnected(@Nullable Bundle bundle) {
+
         }
 
         @Override
@@ -219,5 +308,6 @@ public class SunshineWatchFaceService extends CanvasWatchFaceService {
 
         }
     }
+
 
 }
