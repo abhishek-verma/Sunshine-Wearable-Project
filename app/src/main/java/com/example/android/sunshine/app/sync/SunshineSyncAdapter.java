@@ -486,10 +486,9 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
             String desc = cursor.getString(INDEX_SHORT_DESC);
 
             int iconId = Utility.getIconResourceForWeatherCondition(weatherId);
-            Resources resources = context.getResources();
 
             //send weather id, iconId, min, max, desc
-            WearableDataSyncService.syncData(getContext(),
+            WearableDataSyncService.syncData(context,
                     iconId,
                     high,
                     low,

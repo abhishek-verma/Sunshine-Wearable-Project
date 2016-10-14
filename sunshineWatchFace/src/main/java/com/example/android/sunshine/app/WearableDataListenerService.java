@@ -56,7 +56,7 @@ public class WearableDataListenerService extends WearableListenerService impleme
 
 
                 if (path.equals(WEATHER_DATA_PATH)) {
-//                    high = dataMap.getDouble(HIGH_TEMP_KEY);
+//                    mHigh = dataMap.getDouble(HIGH_TEMP_KEY);
 //                    low = dataMap.getDouble(LOW_TEMP_KEY);
 //                    weatherDesc = dataMap.getString(DESC_KEY);
 //                    iconAsset = dataMap.getAsset(IMAGE_ASSET_KEY);

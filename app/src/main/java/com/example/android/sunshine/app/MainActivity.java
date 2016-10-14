@@ -33,7 +33,6 @@ import android.view.View;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.gcm.RegistrationIntentService;
 import com.example.android.sunshine.app.sync.SunshineSyncAdapter;
-import com.example.android.sunshine.app.wearable.WearableDataSyncService;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 
@@ -108,12 +107,6 @@ public class MainActivity extends AppCompatActivity implements ForecastFragment.
             }
         }
 
-        //TODO remove
-        WearableDataSyncService.syncData(this,
-                R.drawable.ic_clear,
-                31,
-                21,
-                "Batman");
     }
 
     @Override

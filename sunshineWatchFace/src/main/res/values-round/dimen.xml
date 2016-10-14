@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="text_size_small">12sp</dimen>
+    <dimen name="text_size_normal">20sp</dimen>
+    <dimen name="text_size_large">26sp</dimen>
+    <dimen name="colon_width">10dp</dimen>
+    <dimen name="bitmap_height">30dp</dimen>
+
+    <dimen name="clock_pos_x_offset">40dp</dimen>
+    <dimen name="clock_pos_y_offset">65dp</dimen>
+
+    <dimen name="weather_pos_x_shift">50dp</dimen>
+    <dimen name="weather_pos_y_shift">50dp</dimen>
+
+    <dimen name="weather_icon_x_shift">90dp</dimen>
+    <dimen name="weather_icon_y_shift">90dp</dimen>
+
+    <dimen name="weather_temp_x_shift">85dp</dimen>
+    <dimen name="weather_temp_y_shift">70dp</dimen>
+
+</resources>

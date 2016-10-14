@@ -13,13 +13,12 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault">
-
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
         <service
-            android:name="com.example.android.sunshine.app.SunshineWatchFaceService"
+            android:name=".SunshineWatchFaceService"
             android:label="@string/watch_face_name"
             android:permission="android.permission.BIND_WALLPAPER">
             <meta-data
@@ -27,28 +26,32 @@
                 android:resource="@xml/watch_face" />
             <meta-data
                 android:name="com.google.android.wearable.watchface.preview"
-                android:resource="@drawable/preview_watch_face" />
+                android:resource="@drawable/watchface_preview_square" />
+            <meta-data
+                android:name="com.google.android.wearable.watchface.preview_circular"
+                android:resource="@drawable/watchface_preview_round" />
 
             <intent-filter>
                 <action android:name="android.service.wallpaper.WallpaperService" />
-
                 <category android:name="com.google.android.wearable.watchface.category.WATCH_FACE" />
             </intent-filter>
         </service>
         <service
-            android:name="com.example.android.sunshine.app.WearableDataListenerService"
+            android:name=".WearableDataListenerService"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
-
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <!--<action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />-->
+                <!-- <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" /> -->
                 <data
                     android:host="*"
                     android:pathPrefix="/weather-data"
                     android:scheme="wear" />
             </intent-filter>
         </service>
+        <service
+            android:name=".RequestDataService"
+            android:exported="false"></service>
     </application>
 
 </manifest>
